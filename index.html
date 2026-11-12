@@ -1,13 +1,304 @@
-Kuful M/A Basic School
-Online JHS Gradebook · Basic 7, Basic 8 and Basic 9
 
-Teacher and Administrator Login
-Sign in with your school account. New staff can create an account after receiving approval from the administrator.
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Kuful M/A Online Gradebook</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root{--navy:#142b4a;--blue:#1769aa;--light:#f2f6fb;--white:#fff;--green:#16834a;--red:#bd3030}
+*{box-sizing:border-box}
+body{margin:0;font-family:Arial,sans-serif;background:var(--light);color:#243247}
+header{background:var(--navy);color:white;padding:18px 20px}
+header h1{font-size:21px;margin:0 0 5px}
+header p{margin:0;font-size:13px;color:#d7e5f5}
+main{max-width:1100px;margin:22px auto;padding:0 14px}
+.panel{background:white;border-radius:12px;padding:18px;margin-bottom:16px;box-shadow:0 2px 9px #172b4410}
+h2{font-size:19px;margin:0 0 14px;color:var(--navy)}
+h3{font-size:16px;color:var(--navy)}
+input,select,button{font:inherit;padding:11px;border:1px solid #cbd5e1;border-radius:7px;width:100%;margin:5px 0}
+button{background:var(--blue);color:white;border:0;font-weight:bold;cursor:pointer}
+button.secondary{background:#52657b}
+button.danger{background:var(--red)}
+button:disabled{opacity:.5}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:10px}
+nav{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:15px}
+nav button{width:auto;margin:0;padding:10px 14px}
+nav button.active{background:var(--navy)}
+.hidden{display:none!important}
+.muted{color:#64748b;font-size:13px}
+.notice{padding:11px;border-radius:7px;background:#eaf2fb;margin:10px 0}
+.error{color:var(--red)}
+.success{color:var(--green)}
+table{width:100%;border-collapse:collapse;font-size:14px}
+th,td{text-align:left;padding:10px;border-bottom:1px solid #e2e8f0}
+th{background:#f1f5f9}
+.table-wrap{overflow-x:auto}
+footer{text-align:center;color:#64748b;padding:25px;font-size:12px}
+</style>
+</head>
+<body>
+<header>
+<h1>KUFUL M/A BASIC SCHOOL</h1>
+<p>Online JHS Gradebook · Basic 7, Basic 8 and Basic 9</p>
+</header>
+<main>
+<section id="auth" class="panel">
+<h2>Teacher and Administrator Login</h2>
+<p class="muted">Sign in with your school account. New staff can register for an account.</p>
+<div class="grid">
+<div><label>Email address</label><input id="email" type="email" placeholder="name@example.com"></div>
+<div><label>Password</label><input id="password" type="password" placeholder="Enter password"></div>
+<div id="nameBox" class="hidden"><label>Full name</label><input id="fullName" placeholder="Teacher's full name"></div>
+</div>
+<button id="loginBtn" onclick="login()">Sign in</button>
+<button class="secondary" id="registerBtn" onclick="register()">Create staff account</button>
+<p id="authMsg" class="muted"></p>
+</section>
 
-Email address
-name@example.com
-Password
-Enter password
-Sign in
-Create staff account
-Account registration does not automatically grant administrator privileges or class assignments.
+<section id="app" class="hidden">
+<div class="panel">
+<div class="grid">
+<div><strong id="welcome">Welcome</strong><p class="muted" id="roleText"></p></div>
+<div><button class="secondary" onclick="logout()">Sign out</button></div>
+</div>
+</div>
+<nav id="navigation">
+<button class="active" onclick="showTab('home',this)">Dashboard</button>
+<button onclick="showTab('students',this)">Students</button>
+<button onclick="showTab('assessments',this)">Assessments</button>
+<button onclick="showTab('scores',this)">Enter Marks</button>
+<button onclick="showTab('attendance',this)">Attendance</button>
+<button id="adminTab" class="hidden" onclick="showTab('admin',this)">Administration</button>
+</nav>
+
+<section id="home" class="panel tab">
+<h2>School Gradebook Dashboard</h2>
+<div class="grid">
+<div class="notice"><strong>School:</strong><br>Kuful M/A Basic School</div>
+<div class="notice"><strong>Classes:</strong><br>Basic 7, Basic 8, Basic 9</div>
+<div class="notice"><strong>Access:</strong><br><span id="accessLabel">Teacher</span></div>
+</div>
+<p id="dashboardInfo" class="muted">Your assigned classes and subjects will appear as they are configured.</p>
+</section>
+
+<section id="students" class="panel tab hidden">
+<h2>Student Register</h2>
+<div class="grid">
+<input id="admNo" placeholder="Admission number">
+<input id="firstName" placeholder="First name">
+<input id="lastName" placeholder="Last name">
+<input id="otherNames" placeholder="Other names (optional)">
+<select id="studentClass"></select>
+<select id="gender"><option value="">Gender</option><option>Male</option><option>Female</option><option>Other</option></select>
+<input id="dob" type="date" aria-label="Date of birth">
+<input id="guardian" placeholder="Parent/guardian name">
+<input id="guardianPhone" placeholder="Guardian phone">
+</div>
+<button onclick="addStudent()">Save student</button>
+<div id="studentList" class="table-wrap"></div>
+</section>
+
+<section id="assessments" class="panel tab hidden">
+<h2>Create Assessment</h2>
+<div class="grid">
+<select id="assessmentClass"></select>
+<select id="assessmentSubject"></select>
+<select id="term"><option>First</option><option>Second</option><option>Third</option></select>
+<input id="year" placeholder="Academic year e.g. 2026/2027">
+<input id="assessmentTitle" placeholder="Assessment title">
+<select id="assessmentType">
+<option>Class Test</option><option>Exercise</option><option>Assignment</option>
+<option>Project</option><option>Midterm</option><option>End-of-Term Exam</option>
+</select>
+<input id="maxScore" type="number" min="1" step="0.5" placeholder="Maximum score">
+<input id="assessmentDate" type="date">
+</div>
+<button onclick="createAssessment()">Save assessment</button>
+<div id="assessmentList" class="table-wrap"></div>
+</section>
+
+<section id="scores" class="panel tab hidden">
+<h2>Enter Student Marks</h2>
+<select id="scoreAssessment" onchange="loadScoreStudents()"></select>
+<div id="scoreEntry"></div>
+<button onclick="saveScores()">Save marks</button>
+<p class="muted">Marks must not exceed the maximum score for the assessment.</p>
+</section>
+
+<section id="attendance" class="panel tab hidden">
+<h2>Teacher Attendance</h2>
+<p id="attendanceDateLabel" class="muted"></p>
+<button onclick="clockIn()">Clock in</button>
+<button class="secondary" onclick="clockOut()">Clock out</button>
+<div id="attendanceHistory" class="table-wrap"></div>
+</section>
+
+<section id="admin" class="panel tab hidden">
+<h2>Administration</h2>
+<p class="muted">Assign a registered teacher to a class and subject. Only an administrator can manage assignments.</p>
+<div class="grid">
+<select id="teacherSelect"></select>
+<select id="adminClass"></select>
+<select id="adminSubject"></select>
+</div>
+<button onclick="assignTeacher()">Save teacher assignment</button>
+<div id="assignmentList" class="table-wrap"></div>
+<h3>Registered staff</h3>
+<div id="staffList" class="table-wrap"></div>
+</section>
+</section>
+</main>
+<footer>Kuful M/A Basic School · Secure online gradebook</footer>
+
+<script>
+const SUPABASE_URL="https://wzndfvscttpkqmwsbblm.supabase.co";
+const SUPABASE_KEY="sb_publishable_f0tZQE0DcBj4l73xIyDiuQ_kTWQ2PL_";
+const db=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
+let user=null,profile=null,assignments=[],classes=[],subjects=[],students=[],assessments=[],scoreRows=[];
+
+function msg(id,text,kind="muted"){const e=document.getElementById(id);e.textContent=text;e.className=kind}
+function esc(s){return String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
+function today(){const d=new Date();return new Date(d.getTime()-d.getTimezoneOffset()*60000).toISOString().slice(0,10)}
+function fillSelect(id,items,labelFn){const el=document.getElementById(id);el.innerHTML=items.map(x=>`<option value="${x.id}">${esc(labelFn(x))}</option>`).join("")}
+async function login(){
+ const {error}=await db.auth.signInWithPassword({email:email.value.trim(),password:password.value});
+ if(error)return msg("authMsg",error.message,"error");
+ await startApp();
+}
+async function register(){
+ const n=fullName.value.trim(),e=email.value.trim(),p=password.value;
+ if(!n||!e||p.length<8)return msg("authMsg","Enter your full name, email and a password of at least 8 characters.","error");
+ const {error}=await db.auth.signUp({email:e,password:p,options:{data:{full_name:n}}});
+ if(error)return msg("authMsg",error.message,"error");
+ msg("authMsg","Registration submitted. Check your email if confirmation is required, then sign in. Your account will have teacher access until an administrator approves and assigns it.","success");
+}
+async function logout(){await db.auth.signOut();location.reload()}
+function showTab(id,btn){
+ document.querySelectorAll(".tab").forEach(x=>x.classList.add("hidden"));
+ document.getElementById(id).classList.remove("hidden");
+ document.querySelectorAll("nav button").forEach(x=>x.classList.remove("active"));
+ btn.classList.add("active");
+ if(id==="students")loadStudents();
+ if(id==="assessments")loadAssessments();
+ if(id==="scores")loadAssessments(true);
+ if(id==="attendance")loadAttendance();
+ if(id==="admin"&&profile.role==="admin")loadAdmin();
+}
+async function startApp(){
+ const {data:{user:u}}=await db.auth.getUser();user=u;
+ if(!user)return;
+ const {data:p,error}=await db.from("profiles").select("*").eq("id",user.id).single();
+ if(error||!p){msg("authMsg","Your staff profile is not ready. Contact the administrator.","error");return}
+ profile=p;
+ document.getElementById("auth").classList.add("hidden");
+ document.getElementById("app").classList.remove("hidden");
+ welcome.textContent=p.full_name||user.email;
+ roleText.textContent="Account role: "+p.role;
+ accessLabel.textContent=p.role;
+ if(p.role==="admin")adminTab.classList.remove("hidden");
+ await loadBase();
+}
+async function loadBase(){
+ let r=await db.from("school_classes").select("*").order("name");classes=r.data||[];
+ r=await db.from("subjects").select("*").eq("active",true).order("name");subjects=r.data||[];
+ r=await db.from("teacher_assignments").select("id,class_id,subject_id,teacher_id,school_classes(name),subjects(name)").eq("teacher_id",user.id);
+ assignments=r.data||[];
+ const allowedClasses=profile.role==="admin"?classes:classes.filter(c=>assignments.some(a=>a.class_id===c.id));
+ const allowedSubjects=profile.role==="admin"?subjects:subjects.filter(s=>assignments.some(a=>a.subject_id===s.id));
+ ["studentClass","assessmentClass","adminClass"].forEach(id=>fillSelect(id,id==="adminClass"?classes:allowedClasses,x=>x.name));
+ ["assessmentSubject","adminSubject"].forEach(id=>fillSelect(id,id==="adminSubject"?subjects:allowedSubjects,x=>x.name));
+ dashboardInfo.textContent=profile.role==="admin"?"Administrator access: manage school records, staff assignments and gradebook data.":`You currently have ${assignments.length} class and subject assignment(s).`;
+}
+async function addStudent(){
+ const row={admission_number:admNo.value.trim(),first_name:firstName.value.trim(),last_name:lastName.value.trim(),other_names:otherNames.value.trim()||null,class_id:studentClass.value,gender:gender.value||null,date_of_birth:dob.value||null,guardian_name:guardian.value.trim()||null,guardian_phone:guardianPhone.value.trim()||null};
+ if(!row.admission_number||!row.first_name||!row.last_name||!row.class_id)return alert("Enter admission number, first name, surname and class.");
+ const {error}=await db.from("students").insert(row);
+ if(error)alert(error.message);else{alert("Student saved.");document.querySelectorAll("#students input").forEach(x=>x.value="");await loadStudents()}
+}
+async function loadStudents(){
+ let q=db.from("students").select("*,school_classes(name)").eq("active",true).order("last_name");
+ if(profile.role!=="admin")q=q.in("class_id",assignments.map(a=>a.class_id));
+ const {data,error}=await q;if(error)return studentList.textContent=error.message;
+ students=data||[];
+ studentList.innerHTML="<table><tr><th>Admission No.</th><th>Student</th><th>Class</th></tr>"+students.map(s=>`<tr><td>${esc(s.admission_number)}</td><td>${esc(s.first_name+" "+s.last_name)}</td><td>${esc(s.school_classes?.name)}</td></tr>`).join("")+"</table>";
+}
+async function createAssessment(){
+ const row={class_id:assessmentClass.value,subject_id:assessmentSubject.value,teacher_id:user.id,academic_year:year.value.trim(),term:term.value,title:assessmentTitle.value.trim(),assessment_type:assessmentType.value,maximum_score:Number(maxScore.value),assessment_date:assessmentDate.value||today()};
+ if(!row.class_id||!row.subject_id||!row.academic_year||!row.title||!row.maximum_score||row.maximum_score<=0)return alert("Complete all required assessment fields.");
+ const {error}=await db.from("assessments").insert(row);
+ if(error)alert(error.message);else{alert("Assessment created.");assessmentTitle.value="";await loadAssessments()}
+}
+async function loadAssessments(forScores=false){
+ let q=db.from("assessments").select("*,school_classes(name),subjects(name)").order("assessment_date",{ascending:false});
+ if(profile.role!=="admin")q=q.eq("teacher_id",user.id);
+ const {data,error}=await q;if(error)return alert(error.message);
+ assessments=data||[];
+ const html="<table><tr><th>Assessment</th><th>Class</th><th>Subject</th><th>Term</th><th>Maximum</th></tr>"+assessments.map(a=>`<tr><td>${esc(a.title)}</td><td>${esc(a.school_classes?.name)}</td><td>${esc(a.subjects?.name)}</td><td>${esc(a.term)}</td><td>${a.maximum_score}</td></tr>`).join("")+"</table>";
+ assessmentList.innerHTML=html;
+ if(forScores){scoreAssessment.innerHTML=assessments.map(a=>`<option value="${a.id}">${esc(a.title)} — ${esc(a.school_classes?.name)} — ${esc(a.subjects?.name)}</option>`).join("");await loadScoreStudents()}
+}
+async function loadScoreStudents(){
+ const a=assessments.find(x=>x.id===scoreAssessment.value);if(!a)return;
+ const {data,error}=await db.from("students").select("*").eq("class_id",a.class_id).eq("active",true).order("last_name");
+ if(error)return scoreEntry.textContent=error.message;
+ const {data:existing}=await db.from("assessment_scores").select("*").eq("assessment_id",a.id);
+ const scores=existing||[];
+ scoreRows=(data||[]).map(s=>({student:s,score:scores.find(x=>x.student_id===s.id)?.score??""}));
+ scoreEntry.innerHTML="<div class='table-wrap'><table><tr><th>Student</th><th>Admission No.</th><th>Score / "+a.maximum_score+"</th></tr>"+scoreRows.map((x,i)=>`<tr><td>${esc(x.student.first_name+" "+x.student.last_name)}</td><td>${esc(x.student.admission_number)}</td><td><input type='number' min='0' max='${a.maximum_score}' step='0.01' id='mark${i}' value='${esc(x.score)}' aria-label='Student score'></td></tr>`).join("")+"</table></div>";
+}
+async function saveScores(){
+ const a=assessments.find(x=>x.id===scoreAssessment.value);if(!a)return alert("Select an assessment.");
+ const rows=[];
+ for(let i=0;i<scoreRows.length;i++){
+  const raw=document.getElementById("mark"+i).value;if(raw==="")continue;
+  const score=Number(raw);
+  if(!Number.isFinite(score)||score<0||score>a.maximum_score)return alert("Check the mark for "+scoreRows[i].student.first_name+". It must be between 0 and "+a.maximum_score+".");
+  rows.push({assessment_id:a.id,student_id:scoreRows[i].student.id,score,entered_by:user.id});
+ }
+ if(!rows.length)return alert("Enter at least one mark.");
+ const {error}=await db.from("assessment_scores").upsert(rows,{onConflict:"assessment_id,student_id"});
+ if(error)alert(error.message);else alert("Marks saved successfully.");
+}
+async function clockIn(){
+ const {data:old}=await db.from("teacher_attendance").select("*").eq("teacher_id",user.id).eq("attendance_date",today()).maybeSingle();
+ if(old?.clock_in)return alert("You have already clocked in today.");
+ const {error}=await db.from("teacher_attendance").insert({teacher_id:user.id,attendance_date:today(),clock_in:new Date().toISOString()});
+ if(error)alert(error.message);else{alert("Clock-in recorded.");loadAttendance()}
+}
+async function clockOut(){
+ const {data:old}=await db.from("teacher_attendance").select("*").eq("teacher_id",user.id).eq("attendance_date",today()).maybeSingle();
+ if(!old?.clock_in)return alert("Please clock in first.");
+ if(old.clock_out)return alert("You have already clocked out today.");
+ const {error}=await db.from("teacher_attendance").update({clock_out:new Date().toISOString()}).eq("id",old.id);
+ if(error)alert(error.message);else{alert("Clock-out recorded.");loadAttendance()}
+}
+async function loadAttendance(){
+ attendanceDateLabel.textContent="Attendance date: "+today();
+ let q=db.from("teacher_attendance").select("*").order("attendance_date",{ascending:false}).limit(30);
+ if(profile.role!=="admin")q=q.eq("teacher_id",user.id);
+ const {data,error}=await q;if(error)return attendanceHistory.textContent=error.message;
+ attendanceHistory.innerHTML="<table><tr><th>Date</th><th>Clock in</th><th>Clock out</th></tr>"+(data||[]).map(x=>`<tr><td>${esc(x.attendance_date)}</td><td>${x.clock_in?new Date(x.clock_in).toLocaleTimeString():"—"}</td><td>${x.clock_out?new Date(x.clock_out).toLocaleTimeString():"—"}</td></tr>`).join("")+"</table>";
+}
+async function loadAdmin(){
+ const {data:staff,error}=await db.from("profiles").select("*").order("full_name");
+ if(error)return alert(error.message);
+ teacherSelect.innerHTML=(staff||[]).map(t=>`<option value="${t.id}">${esc(t.full_name||"Unnamed staff")} — ${esc(t.role)}</option>`).join("");
+ staffList.innerHTML="<table><tr><th>Name</th><th>Staff ID</th><th>Role</th></tr>"+(staff||[]).map(t=>`<tr><td>${esc(t.full_name)}</td><td>${esc(t.staff_id)}</td><td>${esc(t.role)}</td></tr>`).join("")+"</table>";
+ const {data:all,error:e}=await db.from("teacher_assignments").select("*,profiles(full_name),school_classes(name),subjects(name)");
+ if(e)return assignmentList.textContent=e.message;
+ assignmentList.innerHTML="<table><tr><th>Teacher</th><th>Class</th><th>Subject</th></tr>"+(all||[]).map(x=>`<tr><td>${esc(x.profiles?.full_name)}</td><td>${esc(x.school_classes?.name)}</td><td>${esc(x.subjects?.name)}</td></tr>`).join("")+"</table>";
+}
+async function assignTeacher(){
+ const row={teacher_id:teacherSelect.value,class_id:adminClass.value,subject_id:adminSubject.value};
+ if(!row.teacher_id||!row.class_id||!row.subject_id)return alert("Select a teacher, class and subject.");
+ const {error}=await db.from("teacher_assignments").insert(row);
+ if(error)alert(error.message);else{alert("Teacher assignment saved.");loadAdmin()}
+}
+document.getElementById("assessmentDate").value=today();
+db.auth.getSession().then(({data})=>{if(data.session)startApp()});
+db.auth.onAuthStateChange((event,session)=>{if(event==="SIGNED_IN"&&session)startApp()});
+</script>
+</body>
+</html>
